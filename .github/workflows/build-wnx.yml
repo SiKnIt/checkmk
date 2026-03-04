@@ -22,15 +22,15 @@ jobs:
       - name: Build Windows agent (wnx) only
         shell: pwsh
         run: |
-          # 1) Ensure 'where make' returns exactly one entry (you already did this)
+          # Ensure only one make.exe is found
           $env:Path = (($env:Path -split ';') | Where-Object { $_ -and ($_ -ne 'C:\mingw64\bin') }) -join ';'
 
-          # 2) Force GNU make to use cmd.exe (avoid sh/bash from Git for Windows)
+          # Force make to use cmd.exe semantics (still keep this)
           $env:SHELL = "cmd.exe"
 
-          # 3) Remove Git's Unix tools from PATH so make can't auto-pick sh.exe
+          # Remove Git-for-Windows shells so make cannot pick sh.exe/bash.exe
           $env:Path = (($env:Path -split ';') | Where-Object {
-            $_ -and ($_ -notmatch '\\Git\\usr\\bin$') -and ($_ -notmatch '\\Git\\usr\\bin\\?')
+            $_ -and ($_ -notmatch '\\Git\\usr\\bin$') -and ($_ -notmatch '\\Git\\bin$')
           }) -join ';'
 
           Write-Host "where make:"; where.exe make
