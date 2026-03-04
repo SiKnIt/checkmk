@@ -2,29 +2,33 @@ name: build-wnx
 
 on:
   push:
-    branches: [ "*" ]
+    branches: ["*"]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure
+      # run.ps1 requires: choco, perl, make, python (python is already on runner)
+      - name: Install prerequisites
         shell: pwsh
         run: |
-          cmake -S agents\wnx -B build -G "Visual Studio 17 2022"
+          choco install -y make strawberryperl
+          refreshenv
 
-      - name: Build
+      - name: Build Windows agent (wnx) only
         shell: pwsh
         run: |
-          cmake --build build --config Release
+          cd agents\wnx
+          .\run.cmd --win-agent --build
 
-      - name: Upload agent exe
+      - name: Upload build outputs
         uses: actions/upload-artifact@v4
         with:
-          name: checkmk-agent-exe
+          name: wnx-build-output
           path: |
-            build/**/check_mk_agent.exe
-            build/**/check_mk_agent*.exe
+            agents/wnx/build/**
+            artefacts/**
