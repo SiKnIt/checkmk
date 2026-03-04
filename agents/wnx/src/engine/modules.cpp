@@ -77,7 +77,7 @@ void RepairModuleFromCache(const Module& mod, const fs::path& modules_dir) {
 
     std::error_code ec;
     if (!fs::exists(cab, ec) || ec || fs::file_size(cab, ec) == 0) {
-        XLOG::l(XLOG::kWarn,
+        XLOG::l.w(
             "Cached module '{}' missing. Aborting repair! '{}'",
             mod.name(), cab.u8string());
         return;
@@ -86,11 +86,12 @@ void RepairModuleFromCache(const Module& mod, const fs::path& modules_dir) {
     auto default_dir = modules_dir / mod.name();
     auto actual_dir  = modules_dir.parent_path() / mod.dir();
 
-    XLOG::l(XLOG::kWarn,
+    XLOG::l.w(
             "Repairing module '{}' by re-extracting '{}'",
             mod.name(), cab.u8string());
 
-    PrepareCleanTargetDir(default_dir);
++    fs::remove_all(default_dir, ec);
++    fs::create_directories(default_dir, ec);
 
     tools::zip::Extract(cab.wstring(), actual_dir.wstring());
 }
@@ -106,7 +107,7 @@ fs::path Module::findBin(const fs::path &modules_dir) const noexcept {
             RepairModuleFromCache(*this, modules_dir);
 
             if (!fs::exists(default_dir) || !fs::is_directory(default_dir)) {
-                XLOG::l(XLOG::kWarn, "Module '{}' repair failed", name());
+                XLOG::l.w("Module '{}' repair failed", name());
                 return {};
             }
             XLOG::l.i("Module '{}' work folder successfully repaired '{}'", name(), default_dir);
@@ -128,7 +129,7 @@ fs::path Module::findBin(const fs::path &modules_dir) const noexcept {
             RepairModuleFromCache(*this, modules_dir);
 
             if (!fs::exists(actual_dir) || !fs::is_directory(actual_dir)) {
-                XLOG::l(XLOG::kWarn, "Module '{}' repair failed", name());
+                XLOG::l.w("Module '{}' repair failed", name());
                 return {};
             }
             XLOG::l.i("Module '{}' bin directory successfully repaired '{}'", name(), actual_dir);
