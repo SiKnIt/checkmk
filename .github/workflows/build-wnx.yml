@@ -22,6 +22,11 @@ jobs:
       - name: Build Windows agent (wnx) only
         shell: pwsh
         run: |
+          # Make sure where.exe finds exactly one make.exe
+          $env:Path = (($env:Path -split ';') | Where-Object { $_ -and ($_ -ne 'C:\mingw64\bin') }) -join ';'
+          Write-Host "where make:"
+          where.exe make
+
           cd agents\wnx
           .\run.cmd --win-agent --build
 
