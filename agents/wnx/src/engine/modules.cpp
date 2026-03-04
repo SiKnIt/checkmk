@@ -71,33 +71,71 @@ fs::path Module::findPackage(const fs::path &backup_dir) const noexcept {
     return {};
 }
 
+void RepairModuleFromCache(const Module& mod, const fs::path& modules_dir) {
+    auto backup_dir = ModuleCommander::GetModBackup(mod.user());
+    auto cab = backup_dir / (mod.name() + ".cab");
+
+    std::error_code ec;
+    if (!fs::exists(cab, ec) || ec || fs::file_size(cab, ec) == 0) {
+        XLOG::l(XLOG::kWarn,
+            "Cached module '{}' missing. Aborting repair! '{}'",
+            mod.name(), cab.u8string());
+        return;
+    }
+
+    auto default_dir = modules_dir / mod.name();
+    auto actual_dir  = modules_dir.parent_path() / mod.dir();
+
+    XLOG::l(XLOG::kWarn,
+            "Repairing module '{}' by re-extracting '{}'",
+            mod.name(), cab.u8string());
+
+    PrepareCleanTargetDir(default_dir);
+
+    tools::zip::Extract(cab.wstring(), actual_dir.wstring());
+}
+
 fs::path Module::findBin(const fs::path &modules_dir) const noexcept {
     try {
         fs::path actual_dir = modules_dir.parent_path() / dir();
         fs::path default_dir = modules_dir / name();
 
-        // default must exist
         if (!fs::exists(default_dir) || !fs::is_directory(default_dir)) {
             XLOG::d("Module '{}' has no work folder, this is bad", name());
-            return {};
+
+            RepairModuleFromCache(*this, modules_dir);
+
+            if (!fs::exists(default_dir) || !fs::is_directory(default_dir)) {
+                XLOG::l(XLOG::kWarn, "Module '{}' repair failed", name());
+                return {};
+            }
+            XLOG::l.i("Module '{}' work folder successfully repaired '{}'", name(), default_dir);
         }
 
-        // check for actual
+
         std::error_code ec;
         if (fs::exists(actual_dir) && fs::is_directory(actual_dir) &&
             !fs::equivalent(default_dir, actual_dir, ec)) {
-            // check symbolic link, actual is not the same as default
             XLOG::d("Module '{}' has predefined work folder", name());
         }
-        auto table = tools::SplitString(exec(), L" ");
 
+        auto table = tools::SplitString(exec(), L" ");
         auto bin = actual_dir / table[0];
-        if (!fs::exists(bin) || !fs::is_regular_file(bin)) {
+
+        if (!fs::exists(actual_dir) || !fs::is_directory(actual_dir)) {
             XLOG::d("Module '{}' has no bin, this is bad", name());
-            return {};
+
+            RepairModuleFromCache(*this, modules_dir);
+
+            if (!fs::exists(actual_dir) || !fs::is_directory(actual_dir)) {
+                XLOG::l(XLOG::kWarn, "Module '{}' repair failed", name());
+                return {};
+            }
+            XLOG::l.i("Module '{}' bin directory successfully repaired '{}'", name(), actual_dir);
         }
 
         return bin;
+
     } catch (const std::exception &e) {
         XLOG::d("Module '{}' has no work folder, this is bad, exception '{}'",
                 name(), e);
@@ -105,6 +143,8 @@ fs::path Module::findBin(const fs::path &modules_dir) const noexcept {
 
     return {};
 }
+
+
 
 bool ModuleCommander::IsQuickReinstallAllowed() noexcept {
     const auto enabled_in_config =
