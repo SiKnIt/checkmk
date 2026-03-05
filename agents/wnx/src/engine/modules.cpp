@@ -72,7 +72,7 @@ fs::path Module::findPackage(const fs::path &backup_dir) const noexcept {
 }
 
 void RepairModuleFromCache(const Module& mod, const fs::path& modules_dir) {
-    auto backup_dir = ModuleCommander::GetModBackup(mod.user());
+    auto backup_dir = ModuleCommander::GetModBackup(cfg::GetUserDir());
     auto cab = backup_dir / (mod.name() + ".cab");
 
     std::error_code ec;
@@ -90,8 +90,8 @@ void RepairModuleFromCache(const Module& mod, const fs::path& modules_dir) {
             "Repairing module '{}' by re-extracting '{}'",
             mod.name(), cab.u8string());
 
-+    fs::remove_all(default_dir, ec);
-+    fs::create_directories(default_dir, ec);
+    fs::remove_all(default_dir, ec);
+    fs::create_directories(default_dir, ec);
 
     tools::zip::Extract(cab.wstring(), actual_dir.wstring());
 }
